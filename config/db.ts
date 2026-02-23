@@ -1,3 +1,8 @@
+/**
+ * Database Configuration
+ * Handles the connection to the MongoDB database using Mongoose.
+ * Includes: connectDB function.
+ */
 import mongoose from "mongoose";
 
 export const connectDB = async () => {

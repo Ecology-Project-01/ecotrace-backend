@@ -1,3 +1,8 @@
+/**
+ * Observation Model
+ * Defines the Mongoose schema for ecological observations.
+ * Includes: IObservation interface and ObservationSchema with fields for contributor, taxon, photos, location, and route.
+ */
 import { Schema, model, Document } from 'mongoose';
 
 export interface IObservation extends Document {
@@ -22,6 +27,7 @@ export interface IObservation extends Document {
         type: 'Point';
         coordinates: [number, number]; // [lng, lat]
     };
+    location_name?: string; // Add human friendly name
 
     route?: {
         latitude: number;
@@ -79,6 +85,7 @@ const ObservationSchema = new Schema<IObservation>(
                 required: true
             }
         },
+        location_name: { type: String },
 
         route: [
             {
