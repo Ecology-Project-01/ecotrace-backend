@@ -5,10 +5,11 @@
  */
 import { Router } from "express";
 import { createObservation, getObservations } from "../controller/observations.controller";
+import { verifyToken } from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.post("/", createObservation);
-router.get("/", getObservations);
+router.post("/", verifyToken, createObservation);
+router.get("/", verifyToken, getObservations);
 
 export default router;

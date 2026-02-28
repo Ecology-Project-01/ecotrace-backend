@@ -58,3 +58,22 @@ export const createSuperAdmin = async (req: Request, res: Response) => {
         res.status(500).json({ err });
     }
 };
+
+
+export const getAllUsers = async (req: Request, res: Response) => {
+    try {
+        const currentUserRole = (req as any).user.role;
+        let query = {};
+
+        if (currentUserRole === "admin") {
+            query = { role: { $ne: "superadmin" } };
+        }
+
+        const users = await User.find(query).select("-password -__v");
+        res.json(users);
+
+    } catch (err) {
+        console.error(`[Setup] Error fetching all users:`, err);
+        res.status(500).json({ err: "Failed to fetch users" });
+    }
+};

@@ -4,10 +4,13 @@
  * Includes: POST /superadmin route.
  */
 import { Router } from "express";
-import { createSuperAdmin } from "../controller/setup.controller";
+import { createSuperAdmin, getAllUsers } from "../controller/setup.controller";
+import { verifyToken, allowRoles } from "../middleware/auth.middleware";
 
 const router = Router();
 
 router.post("/superadmin", createSuperAdmin);
+router.get("/getAllUsers", verifyToken, allowRoles("admin", "superadmin"), getAllUsers);
+
 
 export default router;

@@ -52,7 +52,11 @@ app.use('/auth', authRoutes);
 app.use('/observations', observationRoutes);
 app.use('/system-init', setupRoutes);
 
+const START_UP_TIME = new Date().toLocaleString();
+
 app.listen(Number(process.env.PORT), "0.0.0.0", () => {
+    console.log(`========================================`);
+    console.log(`EcoTrace Backend Started at: ${START_UP_TIME} `);
     console.log(`Server is running!`);
     console.log(`- Local:      http://localhost:${process.env.PORT}`);
 
