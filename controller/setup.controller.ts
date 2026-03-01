@@ -6,6 +6,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import User from "../models/User";
+import { generateToken } from "../utils/generateToken";
 
 const SALT_ROUNDS = 12;
 
@@ -13,16 +14,17 @@ export const createSuperAdmin = async (req: Request, res: Response) => {
     try {
         console.log(`[Setup] Attempting to create superadmin: ${req.body.email}`);
 
-        const { email, username, password, setupSecret } = req.body;
+        const { email, username, password, org, orgSetupKey } = req.body;
 
-        if (setupSecret !== process.env.SETUP_SECRET) {
-            console.warn(`[Setup] Unauthorized attempt with invalid secret from: ${req.ip}`);
-            return res.status(401).json({ err: "Invalid setup secret" });
+        // One-time master secret check (using orgSetupKey as the gateway)
+        if (orgSetupKey !== "anzz") {
+            console.warn(`[Setup] Unauthorized attempt with invalid orgSetupKey from: ${req.ip}`);
+            return res.status(401).json({ err: "Invalid organization setup key" });
         }
 
-        const existing = await User.findOne({ role: "superadmin" });
+        const existingSuperAdmin = await User.findOne({ role: "superadmin" });
 
-        if (existing) {
+        if (existingSuperAdmin) {
             console.log(`[Setup] Superadmin already exists. Blocked creation of: ${email}`);
             return res.status(403).json({
                 err: "Superadmin already exists"
@@ -39,18 +41,29 @@ export const createSuperAdmin = async (req: Request, res: Response) => {
 
         const hash = await bcrypt.hash(password, SALT_ROUNDS);
 
+        // Hashing the unique setup key if provided for this superadmin
+        let hashedOrgKey = null;
+        if (orgSetupKey) {
+            hashedOrgKey = await bcrypt.hash(orgSetupKey, SALT_ROUNDS);
+        }
+
         const user = await User.create({
             email,
             username,
             password: hash,
             role: "superadmin",
-            org: "root"
+            org: org || "root",
+            orgSetupKey: hashedOrgKey
         });
 
-        console.log(`[Setup] Superadmin created successfully: ${email}`);
+        // Generate token for immediate use
+        const token = generateToken(user);
+
+        console.log(`[Setup] Superadmin created successfully with org: ${user.org}`);
         res.status(201).json({
             msg: "Superadmin created",
-            user: { username: user.username, email: user.email, role: user.role }
+            token,
+            user: { username: user.username, email: user.email, role: user.role, org: user.org }
         });
 
     } catch (err) {
@@ -63,10 +76,21 @@ export const createSuperAdmin = async (req: Request, res: Response) => {
 export const getAllUsers = async (req: Request, res: Response) => {
     try {
         const currentUserRole = (req as any).user.role;
-        let query = {};
+        const currentUserOrg = (req as any).user.org;
+        let query: any = {};
 
-        if (currentUserRole === "admin") {
-            query = { role: { $ne: "superadmin" } };
+        if (currentUserRole === "admin" || currentUserRole === "superadmin") {
+            // Admins & Superadmins see users in their organization (excluding solo users if they are not the target)
+            if (currentUserOrg === "solo") {
+                query = { email: (req as any).user.email };
+            } else {
+                query = {
+                    org: currentUserOrg
+                };
+            }
+        } else {
+            // Regular users only see themselves
+            query = { email: (req as any).user.email };
         }
 
         const users = await User.find(query).select("-password -__v");

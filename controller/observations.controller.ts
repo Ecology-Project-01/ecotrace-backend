@@ -75,10 +75,14 @@ export const getObservations = async (req: Request, res: Response) => {
 
         let query: any = {};
 
-        // Normal users and admins can only see observations from their own organization
-        // Superadmins can see everything
+        // Privacy Logic: "solo" users are private individual entities.
+        // They only see their own data. Other organizations share data within the org.
         if (userRole !== "superadmin") {
-            query.org = userOrg;
+            if (userOrg === "solo") {
+                query.contributor = authReq.user.email;
+            } else {
+                query.org = userOrg;
+            }
         }
 
         if (contributor) {

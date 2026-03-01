@@ -19,6 +19,7 @@ export interface IUser extends Document {
         model: string;
         osVersion: string;
     };
+    orgSetupKey?: string; // Hashed key for the organization
 }
 
 
@@ -61,6 +62,10 @@ const userSchema = new Schema<IUser>({
         brand: String,
         model: String,
         osVersion: String,
+    },
+    orgSetupKey: {
+        type: String,
+        select: false, // Ensure key isn't exposed in responses
     }
 
 }, { timestamps: true, versionKey: false });
