@@ -6,11 +6,13 @@
 import { Router } from "express";
 import { signup, login, deleteUser, addToOrg, removeFromOrg, promoteToAdmin, demoteToUser, resetUserPassword, changeUsername } from "../controller/auth.controller";
 import { verifyToken, allowRoles } from "../middleware/auth.middleware";
+import { validate } from "../middleware/validation.middleware";
+import { loginSchema, registerSchema } from "../utils/schemas";
 
 const router = Router();
 
-router.post("/signup", signup);
-router.post("/login", login);
+router.post("/signup", validate(registerSchema), signup);
+router.post("/login", validate(loginSchema), login);
 
 // Admin-only routes
 router.post("/deleteUser", verifyToken, allowRoles("admin", "superadmin"), deleteUser);

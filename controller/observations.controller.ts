@@ -6,95 +6,104 @@
 import { Request, Response } from "express";
 import Observation from "../models/Observation";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { catchAsync } from "../middleware/errorHandler";
 
-export const createObservation = async (req: Request, res: Response) => {
-    try {
-        const authReq = req as AuthRequest;
-        const userOrg = authReq.user.org || 'solo';
+export const createObservation = catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
+    const userOrg = authReq.user.org || 'solo';
 
-        console.log(`[DEBUG] Creating observation for Org: ${userOrg}`);
+    const {
+        contributor,
+        taxon,
+        count,
+        notes,
+        location,
+        location_name,
+        observedAt
+    } = req.body;
 
-        const {
-            contributor,
-            taxon,
-            count,
-            notes,
-            location,
-            location_name,
-            observedAt
-        } = req.body;
-
-        // Transform location from any format to [String, String]
-        let sanitizedLocation: string[] = [];
-        if (location && typeof location === 'object' && location.coordinates) {
-            sanitizedLocation = location.coordinates.map((c: any) => String(c));
-        } else if (Array.isArray(location)) {
-            sanitizedLocation = location.map((c: any) => String(c));
-        }
-
-        // Handle location_name as an array
-        let sanitizedLocationName = location_name;
-        if (typeof location_name === 'string') {
-            sanitizedLocationName = location_name.split(',').map(s => s.trim());
-        }
-
-        const observationData = {
-            contributor,
-            org: userOrg,
-            taxon,
-            count: count || 1,
-            notes,
-            location: sanitizedLocation,
-            location_name: sanitizedLocationName,
-            observedDate: observedAt ? new Date(observedAt) : new Date(),
-            createdDate: new Date()
-        };
-
-        console.log(`[DEBUG] Final Sanitized Data:`, JSON.stringify(observationData, null, 2));
-
-        const observation = await Observation.create(observationData);
-
-        console.log(`[DEBUG] Saved Successfully. ID: ${observation._id}, Org: ${observation.org}`);
-
-        res.status(201).json(observation);
-    } catch (err) {
-        console.error(`[Observations] Create Error:`, err);
-        res.status(500).json({ err });
+    // Transform location
+    let sanitizedLocation: string[] = [];
+    if (location && typeof location === 'object' && location.coordinates) {
+        sanitizedLocation = location.coordinates.map((c: any) => String(c));
+    } else if (Array.isArray(location)) {
+        sanitizedLocation = location.map((c: any) => String(c));
     }
-};
 
-export const getObservations = async (req: Request, res: Response) => {
-    try {
-        const authReq = req as AuthRequest;
-        const userOrg = authReq.user.org;
-        const userRole = authReq.user.role;
-
-        console.log(`[DEBUG] Fetching observations for Org: ${userOrg}, Role: ${userRole}`);
-
-        const { contributor } = req.query;
-
-        let query: any = {};
-
-        // Privacy Logic: "solo" users are private individual entities.
-        // They only see their own data. Other organizations share data within the org.
-        if (userRole !== "superadmin") {
-            if (userOrg === "solo") {
-                query.contributor = authReq.user.email;
-            } else {
-                query.org = userOrg;
-            }
-        }
-
-        if (contributor) {
-            query.contributor = contributor;
-        }
-
-        const observations = await Observation.find(query)
-            .sort({ createdAt: -1 });
-
-        res.json(observations);
-    } catch (err) {
-        console.error(`[Observations] Fetch Error:`, err);
-        res.status(500).json({ err });
+    let sanitizedLocationName = location_name;
+    if (typeof location_name === 'string') {
+        sanitizedLocationName = location_name.split(',').map(s => s.trim());
     }
-};
+
+    const observationData = {
+        contributor,
+        org: userOrg,
+        taxon,
+        count: count || 1,
+        notes,
+        location: sanitizedLocation,
+        location_name: sanitizedLocationName,
+        observedDate: observedAt ? new Date(observedAt) : new Date(),
+        createdDate: new Date()
+    };
+
+    const observation = await Observation.create(observationData);
+    res.status(201).json({
+        success: true,
+        data: observation
+    });
+});
+
+export const getObservations = catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
+    const userOrg = authReq.user.org;
+    const userRole = authReq.user.role;
+
+    const { contributor, category, page = 1, limit = 10 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    let query: any = {};
+
+    if (userRole !== "superadmin") {
+        if (userOrg === "solo") {
+            query.contributor = authReq.user.email;
+        } else {
+            query.org = userOrg;
+        }
+    }
+
+    if (contributor) {
+        query.contributor = contributor;
+    }
+
+    if (category) {
+        if (category === "Other") {
+            // "Other" is a catch-all for any category not in the main list
+            const standardCategories = ['Bird', 'Mammal', 'Insect', 'Plant', 'Reptile', 'Amphibian', 'Fungi'];
+            query["$or"] = [
+                { "taxon.category": { $nin: standardCategories } },
+                { "taxon.category": { $exists: false } },
+                { "taxon.category": null }
+            ];
+        } else {
+            query["taxon.category"] = category;
+        }
+    }
+
+    const observations = await Observation.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit));
+
+    const total = await Observation.countDocuments(query);
+
+    res.json({
+        success: true,
+        count: observations.length,
+        total,
+        page: Number(page),
+        pages: Math.ceil(total / Number(limit)),
+        data: observations
+    });
+});
+

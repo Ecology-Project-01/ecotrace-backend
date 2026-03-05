@@ -1,16 +1,17 @@
-/**
- * Main Application Entry Point
- * Sets up the Express server, connects to the database, middleware, routes, and starts the server.
- * Includes: Server configuration, middleware setup (helmet, cors, rateLimit), route registration, and server startup logic.
- */
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import os from "os";
 import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import compression from "compression";
+import morgan from "morgan";
+import mongoSanitize from "express-mongo-sanitize";
+import hpp from "hpp";
+const xss = require("xss");
 
 import { connectDB } from "./config/db";
+import { apiLimiter, authLimiter } from "./middleware/rateLimiter";
+import { errorHandler } from "./middleware/errorHandler";
 
 import authRoutes from "./routes/auth.routes";
 import observationRoutes from "./routes/observations.routes";
@@ -27,38 +28,70 @@ connectDB();
 
 const app = express();
 
+// General Middlewares
+app.use(compression()); // Compress responses
+app.use(express.json({ limit: '10kb' })); // Body limit for security
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev')); // Logging
+
+// Security Middlewares
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
 
-// Request Logger Middleware
-app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+// Express 5 Fix: Clean body and params, but skip req.query (which is read-only)
+app.use((req: Request, res: Response, next: NextFunction) => {
+    const sanitize = (obj: any) => {
+        if (!obj || typeof obj !== 'object') return;
+
+        // 1. NoSQL Injection (mongoSanitize)
+        mongoSanitize.sanitize(obj);
+
+        // 2. XSS (xss) - Only clean strings
+        Object.keys(obj).forEach(key => {
+            if (typeof obj[key] === 'string') {
+                obj[key] = xss(obj[key]);
+            } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                sanitize(obj[key]);
+            }
+        });
+    };
+
+    if (req.body) sanitize(req.body);
+    if (req.params) sanitize(req.params);
     next();
 });
 
+app.use(hpp()); // Prevent HTTP Parameter Pollution
 
+// Apply global API rate limiter
+app.use('/api', apiLimiter);
 
-app.use(rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100
-}));
-
+// Routes
 app.get("/", (req: Request, res: Response) => {
-    res.send("EcoTrace Backend is Running!");
+    res.json({
+        message: "EcoTrace Backend is Running!",
+        version: "1.0.0",
+        timestamp: new Date().toISOString()
+    });
 });
 
-app.use('/auth', authRoutes);
-app.use('/observations', observationRoutes);
-app.use('/system-init', setupRoutes);
+// Specific route rate limiting
+app.use('/auth', authLimiter, authRoutes);
+app.use('/observations', apiLimiter, observationRoutes);
+app.use('/system-init', apiLimiter, setupRoutes);
 
+// Error Handling (Must be after all routes)
+app.use(errorHandler);
+
+const PORT = Number(process.env.PORT) || 4000;
 const START_UP_TIME = new Date().toLocaleString();
 
-app.listen(Number(process.env.PORT), "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`========================================`);
     console.log(`EcoTrace Backend Started at: ${START_UP_TIME} `);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`Server is running!`);
-    console.log(`- Local:      http://localhost:${process.env.PORT}`);
+    console.log(`- Local:      http://localhost:${PORT}`);
 
     const interfaces = os.networkInterfaces();
     let networkIp = "";
@@ -74,6 +107,23 @@ app.listen(Number(process.env.PORT), "0.0.0.0", () => {
     });
 
     if (networkIp) {
-        console.log(`- Network:    http://${networkIp}:${process.env.PORT} (Use this IP for Frontend/Mobile)`);
+        console.log(`- Network:    http://${networkIp}:${PORT}`);
     }
+});
+
+// Graceful Shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    server.close(() => {
+        console.log('HTTP server closed');
+        process.exit(0);
+    });
+});
+
+process.on('SIGINT', () => {
+    console.log('SIGINT signal received: closing HTTP server');
+    server.close(() => {
+        console.log('HTTP server closed');
+        process.exit(0);
+    });
 });
