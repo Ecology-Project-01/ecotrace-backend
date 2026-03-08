@@ -16,12 +16,6 @@ export const createSuperAdmin = async (req: Request, res: Response) => {
 
         const { email, username, password, org, orgSetupKey } = req.body;
 
-        // One-time master secret check (using orgSetupKey as the gateway)
-        if (orgSetupKey !== "anzz") {
-            console.warn(`[Setup] Unauthorized attempt with invalid orgSetupKey from: ${req.ip}`);
-            return res.status(401).json({ err: "Invalid organization setup key" });
-        }
-
         const existingSuperAdmin = await User.findOne({ role: "superadmin" });
 
         if (existingSuperAdmin) {

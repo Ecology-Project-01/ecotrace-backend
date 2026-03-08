@@ -7,6 +7,7 @@ import compression from "compression";
 import morgan from "morgan";
 import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
+
 const xss = require("xss");
 
 import { connectDB } from "./config/db";
@@ -28,17 +29,20 @@ connectDB();
 
 const app = express();
 
-// General Middlewares
+app.set('trust proxy', 1); // Trust proxy headers from Cloudflare/Localtunnel
+
 app.use(compression()); // Compress responses
-app.use(express.json({ limit: '10kb' })); // Body limit for security
+app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev')); // Logging
 
-// Security Middlewares
 app.use(helmet());
-app.use(cors());
 
-// Express 5 Fix: Clean body and params, but skip req.query (which is read-only)
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
+
 app.use((req: Request, res: Response, next: NextFunction) => {
     const sanitize = (obj: any) => {
         if (!obj || typeof obj !== 'object') return;
