@@ -12,7 +12,10 @@ export interface IObservation extends Document {
         category: string,
         common_name: string,
         scientific_name?: string,
-        category_name?: string
+        category_name?: string,
+        family?: string,
+        order?: string,
+        iucn_status?: string
     },
     count: number,
     notes?: string;
@@ -43,7 +46,10 @@ const ObservationSchema = new Schema<IObservation>(
             kingdom: { type: String, required: false },
             category: { type: String, required: true },
             common_name: { type: String, required: true },
-            scientific_name: { type: String, required: false }
+            scientific_name: { type: String, required: false },
+            family: { type: String, required: false },
+            order: { type: String, required: false },
+            iucn_status: { type: String, required: false }
         },
 
         count: {
