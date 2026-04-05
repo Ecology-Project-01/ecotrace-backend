@@ -13,9 +13,11 @@ const xss = require("xss");
 import { connectDB } from "./config/db";
 import { apiLimiter, authLimiter } from "./middleware/rateLimiter";
 import { errorHandler } from "./middleware/errorHandler";
+import { jsonBodyParser } from "./middleware/jsonBody.middleware";
 
 import authRoutes from "./routes/auth.routes";
 import observationRoutes from "./routes/observations.routes";
+import tripsRoutes from "./routes/trips.routes";
 import setupRoutes from "./routes/setup.routes";
 
 dotenv.config();
@@ -32,7 +34,7 @@ const app = express();
 app.set('trust proxy', 1); // Trust proxy headers from Cloudflare/Localtunnel
 
 app.use(compression()); // Compress responses
-app.use(express.json({ limit: '10kb' }));
+app.use(jsonBodyParser);
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev')); // Logging
 
@@ -82,6 +84,7 @@ app.get("/", (req: Request, res: Response) => {
 // Specific route rate limiting
 app.use('/auth', authLimiter, authRoutes);
 app.use('/observations', apiLimiter, observationRoutes);
+app.use('/trips', apiLimiter, tripsRoutes);
 app.use('/system-init', apiLimiter, setupRoutes);
 
 // Error Handling (Must be after all routes)

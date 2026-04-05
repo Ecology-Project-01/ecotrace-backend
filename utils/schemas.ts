@@ -17,6 +17,23 @@ export const loginSchema = z.object({
     }),
 });
 
+const pathPointSchema = z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+});
+
+export const tripCreateSchema = z.object({
+    body: z.object({
+        name: z.string().min(1).max(200),
+        path: z.array(pathPointSchema),
+        distance: z.number().min(0),
+        startTime: z.string().datetime().or(z.date()),
+        endTime: z.string().datetime().or(z.date()),
+        observations: z.array(z.unknown()).optional(),
+        clientId: z.string().optional(),
+    }),
+});
+
 export const observationSchema = z.object({
     body: z.object({
         taxon: z.object({
@@ -30,6 +47,7 @@ export const observationSchema = z.object({
         }),
         count: z.number().min(1).optional(),
         notes: z.string().optional(),
+        breeding_status: z.string().max(200).optional(),
         location: z.array(z.string()).length(2), // [Lat, Lng]
         location_name: z.array(z.string()).optional(),
         observedAt: z.string().datetime().or(z.date()).optional(),

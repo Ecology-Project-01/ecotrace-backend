@@ -76,34 +76,27 @@ The server will start on the port specified in your `.env` file (default is usua
 
 ## API Endpoints
 
-### Authentication
+Full reference (all routes, **request bodies**, **query params**, and **headers**): **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)**.
 
--   **POST** `/auth/signup`
-    -   Description: Register a new user.
-    -   Body: `{ "email": "user@example.com", "password": "password123", "name": "John Doe" }`
-    -   Returns: JWT token and user details.
+Summary:
 
--   **POST** `/auth/login`
-    -   Description: Authenticate an existing user.
-    -   Body: `{ "email": "user@example.com", "password": "password123" }`
-    -   Returns: JWT token and user details.
-
-### Observations
-
--   **POST** `/observations`
-    -   Description: Create a new observation log.
-    -   Body: Observation data (as defined in `models/Observation.ts`).
-    -   Authorization: Verify if token is required (based on implementation).
-
--   **GET** `/observations`
-    -   Description: Retrieve a list of observations.
-    -   Query Params: `?contributor=<contributor_id>` (optional filter).
-
-### Health Check
-
--   **GET** `/`
-    -   Description: Check if the server is running.
-    -   Returns: "EcoTrace Backend is Running!"
+| Method | Path | Notes |
+|--------|------|--------|
+| `GET` | `/` | Health check |
+| `POST` | `/system-init/superadmin` | First-time superadmin setup |
+| `GET` | `/system-init/getAllUsers` | Bearer — admin / superadmin |
+| `POST` | `/auth/signup` | Register |
+| `POST` | `/auth/login` | JWT |
+| `POST` | `/auth/reset-password` | Self-service password reset |
+| `PUT` | `/auth/changeUsername` | Bearer |
+| `POST` | `/auth/deleteUser`, `/addToOrg`, `/removeFromOrg`, `/promoteToAdmin` | Bearer — admin / superadmin |
+| `POST` | `/auth/demoteToUser` | Bearer — superadmin only |
+| `POST` | `/observations` | Bearer — create observation |
+| `GET` | `/observations` | Bearer — list (pagination + filters) |
+| `POST` | `/trips` | Bearer — save GPS trip for the org |
+| `GET` | `/trips` | Bearer — list org trips |
+| `GET` | `/trips/:id` | Bearer — trip detail |
+| `DELETE` | `/trips/:id` | Bearer — delete trip |
 
 ## Project Structure
 
