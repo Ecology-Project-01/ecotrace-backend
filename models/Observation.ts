@@ -19,6 +19,7 @@ export interface IObservation extends Document {
     },
     count: number,
     notes?: string;
+    breeding_status?: string;
 
     location: string[];
     location_name?: string[];
@@ -61,6 +62,12 @@ const ObservationSchema = new Schema<IObservation>(
         notes: {
             type: String,
             trim: true
+        },
+
+        breeding_status: {
+            type: String,
+            trim: true,
+            required: false
         },
 
         location: {

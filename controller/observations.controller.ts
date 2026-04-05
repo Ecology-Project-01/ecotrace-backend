@@ -17,6 +17,7 @@ export const createObservation = catchAsync(async (req: Request, res: Response) 
         taxon,
         count,
         notes,
+        breeding_status,
         location,
         location_name,
         observedAt
@@ -41,6 +42,7 @@ export const createObservation = catchAsync(async (req: Request, res: Response) 
         taxon,
         count: count || 1,
         notes,
+        breeding_status: breeding_status || undefined,
         location: sanitizedLocation,
         location_name: sanitizedLocationName,
         observedDate: observedAt ? new Date(observedAt) : new Date(),

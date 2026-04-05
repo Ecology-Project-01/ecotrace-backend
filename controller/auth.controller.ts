@@ -8,11 +8,16 @@ import { catchAsync } from "../middleware/errorHandler";
 const SALT_ROUNDS = 12;
 
 export const signup = catchAsync(async (req: Request, res: Response) => {
-    const { email, password, name, deviceInfo } = req.body;
+    const { password, name, deviceInfo } = req.body;
+    const email = typeof req.body.email === "string" ? req.body.email.trim() : "";
 
     const exists = await User.findOne({ email });
     if (exists) {
-        return res.status(409).json({ msg: `User exists: ${email}` });
+        return res.status(409).json({
+            success: false,
+            message:
+                "This email is already registered. Please sign in instead, or use Reset password if you forgot it.",
+        });
     }
 
     const hashedPwd = await bcrypt.hash(password, SALT_ROUNDS);
@@ -34,7 +39,8 @@ export const signup = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const login = catchAsync(async (req: Request, res: Response) => {
-    const { email, password, deviceInfo } = req.body;
+    const { password, deviceInfo } = req.body;
+    const email = typeof req.body.email === "string" ? req.body.email.trim() : "";
 
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
