@@ -4,7 +4,7 @@
  * Includes: POST /signup and POST /login routes.
  */
 import { Router } from "express";
-import { signup, login, deleteUser, addToOrg, removeFromOrg, promoteToAdmin, demoteToUser, resetUserPassword, changeUsername } from "../controller/auth.controller";
+import { signup, login, deleteUser, addToOrg, removeFromOrg, promoteToAdmin, demoteToUser, resetUserPassword, changeUsername, changePassword } from "../controller/auth.controller";
 import { verifyToken, allowRoles } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
 import { loginSchema, registerSchema } from "../utils/schemas";
@@ -22,6 +22,7 @@ router.post("/promoteToAdmin", verifyToken, allowRoles("admin", "superadmin"), p
 router.post("/demoteToUser", verifyToken, allowRoles("superadmin"), demoteToUser);
 router.post("/reset-password", resetUserPassword);
 router.put("/changeUsername", verifyToken, changeUsername);
+router.post("/change-password", verifyToken, changePassword);
 
 export default router;
 

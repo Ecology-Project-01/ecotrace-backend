@@ -277,6 +277,59 @@ export const resetUserPassword = catchAsync(async (req: Request, res: Response) 
     }
 
     res.json({ success: true, message: `Password reset successfully for ${email}` });
+    
 });
+export const changePassword = catchAsync(async (req: Request, res: Response) => {
+    console.log("===== CHANGE PASSWORD API HIT =====");
 
+    const authReq = req as AuthRequest;
+    console.log("Logged In User:", authReq.user);
 
+    const userEmail = authReq.user.email;
+
+    const { currentPassword, newPassword } = req.body;
+
+    console.log("Current Password:", currentPassword);
+    console.log("New Password:", newPassword);
+
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+            success: false,
+            message: "Current password and new password are required"
+        });
+    }
+
+    const user = await User.findOne({ email: userEmail }).select("+password");
+
+if (!user) {
+    return res.status(404).json({
+        success: false,
+        message: "User not found"
+    });
+}
+
+console.log("User Found:", user.email);
+
+const valid = await bcrypt.compare(currentPassword, user.password);
+    console.log("Current Password Match:", valid);
+
+    if (!valid) {
+        return res.status(401).json({
+            success: false,
+            message: "Current password is incorrect"
+        });
+    }
+
+    const hashedPwd = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    user.password = hashedPwd;
+
+    await user.save();
+
+    console.log("PASSWORD UPDATED SUCCESSFULLY");
+
+    res.status(200).json({
+        success: true,
+        message: "Password changed successfully"
+    });
+});
