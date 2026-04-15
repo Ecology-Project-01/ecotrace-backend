@@ -53,3 +53,19 @@ export const observationSchema = z.object({
         observedAt: z.string().datetime().or(z.date()).optional(),
     }),
 });
+
+export const observationUpdateSchema = z.object({
+    body: z.object({
+        taxon: z.object({
+            common_name: z.string().min(1).optional(),
+            scientific_name: z.string().optional(),
+            family: z.string().optional(),
+            order: z.string().optional(),
+            iucn_status: z.string().optional(),
+            // category and kingdom not allowed to edit here, could be added if needed
+        }).optional(),
+        count: z.number().min(1).optional(),
+        notes: z.string().optional(),
+        breeding_status: z.string().max(200).optional()
+    }),
+});
