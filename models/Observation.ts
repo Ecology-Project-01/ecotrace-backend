@@ -21,8 +21,11 @@ export interface IObservation extends Document {
     notes?: string;
     breeding_status?: string;
 
-    location: string[];
-    location_name?: string[];
+    // { location: string[];
+    //  location_name?: string[];}
+
+     location: number[];
+      location_name?: string[];
 
     observedDate: Date;
     createdDate: Date;
@@ -70,11 +73,16 @@ const ObservationSchema = new Schema<IObservation>(
             required: false
         },
 
+        // location: {
+        //     type: [String],
+        //     required: true
+        // },
+        // location_name: { type: [String] },
+
         location: {
-            type: [String],
-            required: true
-        },
-        location_name: { type: [String] },
+            type: [Number],
+         required: true
+         },
 
         observedDate: {
             type: Date,
@@ -90,4 +98,6 @@ const ObservationSchema = new Schema<IObservation>(
     { timestamps: false }
 );
 
+// add loaction 2dsphere 
+ObservationSchema.index({ location: "2dsphere" });
 export default model<IObservation>("observations", ObservationSchema);

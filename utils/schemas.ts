@@ -48,7 +48,8 @@ export const observationSchema = z.object({
         count: z.number().min(1).optional(),
         notes: z.string().optional(),
         breeding_status: z.string().max(200).optional(),
-        location: z.array(z.string()).length(2), // [Lat, Lng]
+        // location: z.array(z.string()).length(2), // [Lat, Lng]
+        location: z.tuple([z.number(), z.number()]),
         location_name: z.array(z.string()).optional(),
         observedAt: z.string().datetime().or(z.date()).optional(),
     }),
