@@ -24,11 +24,11 @@ export const createObservation = catchAsync(async (req: Request, res: Response) 
     } = req.body;
 
     // Transform location
-    let sanitizedLocation: string[] = [];
+    let sanitizedLocation: number[] = [];
     if (location && typeof location === 'object' && location.coordinates) {
-        sanitizedLocation = location.coordinates.map((c: any) => String(c));
+        sanitizedLocation = location.coordinates.map((c: any) => Number(c));
     } else if (Array.isArray(location)) {
-        sanitizedLocation = location.map((c: any) => String(c));
+        sanitizedLocation = location.map((c: any) => Number(c));
     }
 
     let sanitizedLocationName = location_name;
