@@ -7,6 +7,7 @@ import { Request, Response } from "express";
 import Observation from "../models/Observation";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { catchAsync } from "../middleware/errorHandler";
+import geohash from "ngeohash";
 
 export const createObservation = catchAsync(async (req: Request, res: Response) => {
     const authReq = req as AuthRequest;
@@ -36,6 +37,14 @@ export const createObservation = catchAsync(async (req: Request, res: Response) 
         sanitizedLocationName = location_name.split(',').map(s => s.trim());
     }
 
+    let areaId: string | undefined;
+    if (sanitizedLocation.length === 2) {
+        // Assuming location is [longitude, latitude]
+        const [lon, lat] = sanitizedLocation;
+        // encode(latitude, longitude, precision). 6 is ~1.2km x 0.6km box
+        areaId = geohash.encode(lat, lon, 6);
+    }
+
     const observationData = {
         contributor,
         org: userOrg,
@@ -45,6 +54,7 @@ export const createObservation = catchAsync(async (req: Request, res: Response) 
         breeding_status: breeding_status || undefined,
         location: sanitizedLocation,
         location_name: sanitizedLocationName,
+        areaId,
         observedDate: observedAt ? new Date(observedAt) : new Date(),
         createdDate: new Date()
     };
@@ -145,6 +155,47 @@ export const updateObservation = catchAsync(async (req: Request, res: Response) 
     res.json({
         success: true,
         data: updatedOb
+    });
+});
+
+export const getAreasSummary = catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
+    const userOrg = authReq.user.org;
+    const userRole = authReq.user.role;
+
+    let matchQuery: any = {};
+
+    if (userRole !== "superadmin") {
+        if (userOrg === "solo") {
+            matchQuery.contributor = authReq.user.email;
+        } else {
+            matchQuery.org = userOrg;
+        }
+    }
+
+    matchQuery.areaId = { $exists: true, $ne: null };
+
+    const areas = await Observation.aggregate([
+        { $match: matchQuery },
+        { 
+            $group: {
+                _id: "$areaId",
+                observationCount: { $sum: 1 },
+                latestObservation: { $max: "$observedDate" },
+                locationNames: { $addToSet: { $arrayElemAt: ["$location_name", 0] } } 
+            }
+        },
+        { $sort: { latestObservation: -1 } }
+    ]);
+
+    res.json({
+        success: true,
+        data: areas.map(area => ({
+            areaId: area._id,
+            observationCount: area.observationCount,
+            lastVisited: area.latestObservation,
+            knownNames: area.locationNames.filter((n: any) => n)
+        }))
     });
 });
 
