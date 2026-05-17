@@ -26,6 +26,7 @@ export interface IObservation extends Document {
 
      location: number[];
       location_name?: string[];
+      areaId?: string;
 
     observedDate: Date;
     createdDate: Date;
@@ -83,6 +84,11 @@ const ObservationSchema = new Schema<IObservation>(
             type: [Number],
          required: true
          },
+        areaId: {
+            type: String,
+            required: false,
+            index: true
+        },
 
         observedDate: {
             type: Date,
